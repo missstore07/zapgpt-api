@@ -1,18 +1,34 @@
 from flask import Flask, request, jsonify
-import openai
-import os
+import requests
 
-openai.api_key = os.getenv("SUA_CHAVE_DA_OPENAI")
 app = Flask(__name__)
 
-@app.route('/zapbot', methods=['GET', 'POST'])
+@app.route("/zapbot", methods=["POST"])
 def zapbot():
-    msg = request.args.get('msg') or request.json.get('message')
-    resposta = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": msg}]
-    )
-    return jsonify({"reply": resposta['choices'][0]['message']['content']})
+    user_msg = request.json.get("message")
 
-port = int(os.environ.get("PORT", 5000))
-app.run(host="0.0.0.0", port=port)
+    if not user_msg:
+        return jsonify({"reply": "Nenhuma mensagem recebida."})
+
+    try:
+        # Chamada ao GPT gratuito via proxy (modelo openrouter gratuito)
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": "Bearer sk-demo",  # token demo gratuito
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "openai/gpt-3.5-turbo",
+                "messages": [{"role": "user", "content": user_msg}]
+            }
+        )
+        result = response.json()
+        reply = result["choices"][0]["message"]["content"]
+        return jsonify({"reply": reply})
+
+    except Exception as e:
+        return jsonify({"reply": f"Erro ao consultar GPT: {str(e)}"})
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080)
