@@ -1,34 +1,24 @@
 from flask import Flask, request, jsonify
-import requests
+import openai
+import os
+
+openai.api_key = os.getenv("SUA_CHAVE_DA_OPENAI")
 
 app = Flask(__name__)
 
-@app.route("/zapbot", methods=["POST"])
+@app.route('/zapbot', methods=['POST'])
 def zapbot():
-    user_msg = request.json.get("message")
+    mensagem = request.json.get('message')
+    print("Mensagem recebida:", mensagem)
 
-    if not user_msg:
-        return jsonify({"reply": "Nenhuma mensagem recebida."})
+    resposta = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": mensagem}]
+    )
 
-    try:
-        # Chamada ao GPT gratuito via proxy (modelo openrouter gratuito)
-        response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": "Bearer sk-demo",  # token demo gratuito
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": "openai/gpt-3.5-turbo",
-                "messages": [{"role": "user", "content": user_msg}]
-            }
-        )
-        result = response.json()
-        reply = result["choices"][0]["message"]["content"]
-        return jsonify({"reply": reply})
+    conteudo = resposta['choices'][0]['message']['content']
+    print("Resposta gerada:", conteudo)
 
-    except Exception as e:
-        return jsonify({"reply": f"Erro ao consultar GPT: {str(e)}"})
+    return jsonify({"reply": conteudo})
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+app.run(host="0.0.0.0", port=8080)
